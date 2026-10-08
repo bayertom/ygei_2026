@@ -4,10 +4,10 @@ clear
 
 %Read file
 %raster = imread('s:/K155/Public/155YGEI/2026/cv2/Image1.bmp')
-
+raster = imread('Image2.bmp');
 
 %Show image
-imshow(raster)
+imshow(raster);
 
 %Get components
 R = double(raster(:, :, 1));
@@ -50,9 +50,27 @@ Cb_t = mydct(Cb, QC);
 Cr_t = mydct(Cr, QC);
 
 %IDCT
+Y2 = myidct(Yt_t, QY);
+Cb2 = myidct(Cb_t, QC);
+Cr2 = myidct(Cr_t, QC);
 
+%YCBCR to RGB
+Rd = Y2 + 1.4020 * (Cr2-128);
+Gd = Y2 -0.3441 * (Cb2-128) - 0.7141 * (Cr2-128);
+Bd = Y2 + 1.7720 * (Cb2-128) - 0.0001 * (Cr2-128);
 
+%Convert double to uint8
+Ri=uint8(Rd);
+Gi=uint8(Gd);
+Bi=uint8(Bd);
 
+%Assembly raster from components
+ras2(:,:,1) = Ri;
+ras2(:,:,2) = Gi;
+ras2(:,:,3) = Bi;
+
+%Show output raster
+imshow(ras2);
 
 function [Rt] = mydct(R, Q)
     %DCT of entire raster
@@ -79,6 +97,33 @@ function [Rt] = mydct(R, Q)
     end
 
 end
+
+
+function [Rt] = myidct(R, Q)
+    %Inverse DCT of entire raster
+    [m, n] = size(R);
+    Rt  = R;
+    
+    %Divide raster to submatrices
+    for i = 1:8:m -7
+        for j = 1:8:n -7
+            %Get submatrix
+            R_sub_quant = R(i:i+7, j:j+7);
+
+            %Dequantization
+            R_sub_idct = R_sub_quant .* Q;
+    
+            %Compute DCT
+            R_sub = myidctsub(R_sub_idct);
+    
+            %Replace submatrix
+            Rt(i:i+7, j:j+7) = R_sub;
+    
+        end
+    end
+
+end
+
 
 
 function [Rt] = mydctsub(R)
@@ -124,3 +169,43 @@ function [Rt] = mydctsub(R)
 end
 
 
+function Rt=myidctsub(R)
+    % Inverse discrete cosine transformation for a 8 x 8 matrix
+    Rt = R;
+    
+    %Output raster: rows
+    for x = 0:7
+       
+        %Output raster: columns
+        for y = 0:7
+           
+            %Input raster: rows
+            F = 0;
+            for u = 0:7
+                %Cu
+                if u == 0
+                    Cu = sqrt(2)/2;
+                else
+                     Cu = 1;
+                end
+    
+                %Input raster: columns
+                for v = 0:7
+                    %Cv
+                    if v == 0
+                        Cv = sqrt(2)/2;
+                    else
+                        Cv = 1;
+                    end
+    
+                    F=F+1/4*Cu*Cv*(R(u+1, v+1)*cos((2*x+1)*u*pi/16)*cos((2*y+1)*v*pi/16));
+    
+                end
+            end
+    
+            %Output raster
+            Rt(x+1,y+1) = F;
+        end
+    end
+
+end
